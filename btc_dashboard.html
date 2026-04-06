@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTC Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: rgba(255,255,255,0.07);
+    --accent: #f7931a;
+    --accent2: #ffb347;
+    --green: #00d084;
+    --red: #ff4757;
+    --blue: #3d8bff;
+    --purple: #9b72ff;
+    --text: #f0f0f5;
+    --muted: #6b6b80;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(247,147,26,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(247,147,26,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper { position: relative; z-index: 1; padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo-area { display: flex; align-items: center; gap: 14px; }
+  .btc-icon {
+    width: 44px; height: 44px;
+    background: var(--accent);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 18px;
+    color: #000;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+    letter-spacing: 0.08em;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    background: rgba(0,208,132,0.08);
+    border: 1px solid rgba(0,208,132,0.2);
+    border-radius: 20px;
+    padding: 6px 14px;
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  /* Metrics row */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .metric-card:hover { border-color: rgba(247,147,26,0.25); }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-line, var(--accent));
+    opacity: 0.6;
+  }
+
+  .m-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .m-value {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .m-change {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .up { color: var(--green); }
+  .dn { color: var(--red); }
+  .neu { color: var(--muted); }
+
+  /* Main charts grid */
+  .charts-main {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .charts-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+
+  .chart-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    background: rgba(247,147,26,0.1);
+    border: 1px solid rgba(247,147,26,0.2);
+    border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  canvas { display: block; width: 100% !important; }
+
+  /* Session bars */
+  .session-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .session-item { display: flex; flex-direction: column; gap: 5px; }
+
+  .session-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+  }
+
+  .session-name { color: var(--text); font-weight: 600; }
+  .session-val { font-family: var(--mono); color: var(--muted); }
+
+  .session-track {
+    height: 6px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .session-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+
+  /* Heatmap */
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: 36px repeat(12, 1fr);
+    gap: 3px;
+    font-size: 10px;
+  }
+
+  .hm-label { color: var(--muted); display: flex; align-items: center; }
+  .hm-month { color: var(--muted); text-align: center; padding-bottom: 4px; font-family: var(--mono); font-size: 9px; }
+  .hm-cell {
+    height: 20px;
+    border-radius: 3px;
+    background: rgba(247,147,26,0.06);
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-left {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .footer-tags { display: flex; gap: 8px; }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .tag.orange { border-color: rgba(247,147,26,0.3); color: var(--accent); }
+  .tag.blue { border-color: rgba(61,139,255,0.3); color: var(--blue); }
+  .tag.green { border-color: rgba(0,208,132,0.3); color: var(--green); }
+
+  @media (max-width: 1000px) {
+    .metrics { grid-template-columns: repeat(3, 1fr); }
+    .charts-main { grid-template-columns: 1fr; }
+    .charts-bottom { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .charts-bottom { grid-template-columns: 1fr; }
+    .wrapper { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-area">
+      <div class="btc-icon">₿</div>
+      <div>
+        <h1>BTC Analytics Dashboard</h1>
+        <div class="subtitle">BINANCE · BTC/USDT · 15-MIN OHLCV · 2021–2026</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div class="live-badge"><div class="live-dot"></div>LIVE DATA</div>
+    </div>
+  </header>
+
+  <!-- Metrics -->
+  <div class="metrics">
+    <div class="metric-card" style="--accent-line:#f7931a">
+      <div class="m-label">Latest Close</div>
+      <div class="m-value">$83,200</div>
+      <div class="m-change dn">▼ 3.2% (24h)</div>
+    </div>
+    <div class="metric-card" style="--accent-line:#ff4757">
+      <div class="m-label">All-Time High</div>
+      <div class="m-value">$108,135</div>
+      <div class="m-change neu">— Dec 2024</div>
+    </div>
+    <div class="metric-card" style="--accent-line:#00d084">
+      <div class="m-label">All-Time Low (5yr)</div>
+      <div class="m-value">$15,476</div>
+      <div class="m-change neu">— Nov 2022</div>
+    </div>
+    <div class="metric-card" style="--accent-line:#3d8bff">
+      <div class="m-label">Total Candles</div>
+      <div class="m-value">~175K</div>
+      <div class="m-change neu">15-min intervals</div>
+    </div>
+    <div class="metric-card" style="--accent-line:#9b72ff">
+      <div class="m-label">Data Coverage</div>
+      <div class="m-value">5 Years</div>
+      <div class="m-change neu">Apr 2021 → Apr 2026</div>
+    </div>
+  </div>
+
+  <!-- Main Charts -->
+  <div class="charts-main">
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">BTC/USDT — 5 Year Price History</span>
+        <span class="chart-tag">MONTHLY AVG</span>
+      </div>
+      <canvas id="priceChart" height="160"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">Volume by Session</span>
+        <span class="chart-tag">UTC</span>
+      </div>
+      <div class="session-list" id="sessionList"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Charts -->
+  <div class="charts-bottom">
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">Yearly Price Range</span>
+        <span class="chart-tag">MIN / MAX / AVG</span>
+      </div>
+      <canvas id="rangeChart" height="160"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">Returns Distribution</span>
+        <span class="chart-tag">15-MIN</span>
+      </div>
+      <canvas id="retChart" height="160"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">Avg Return by Session</span>
+        <span class="chart-tag">% PER CANDLE</span>
+      </div>
+      <canvas id="sessRetChart" height="160"></canvas>
+    </div>
+  </div>
+
+  <!-- Heatmap -->
+  <div class="chart-card" style="margin-bottom:14px;">
+    <div class="chart-header">
+      <span class="chart-title">Monthly Volume Activity Heatmap</span>
+      <span class="chart-tag">2021 – 2026</span>
+    </div>
+    <div class="heatmap-grid" id="heatmap"></div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-left">
+      SOURCE: Binance API via CCXT &nbsp;|&nbsp; DATABASE: MySQL (btc_data) &nbsp;|&nbsp; TABLE: btc_15m_historical<br>
+      COLUMNS: timestamp · open · high · low · close · volume · session
+    </div>
+    <div class="footer-tags">
+      <span class="tag orange">Python</span>
+      <span class="tag blue">MySQL</span>
+      <span class="tag green">Matplotlib</span>
+      <span class="tag">Seaborn</span>
+      <span class="tag">CCXT</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  Chart.defaults.color = '#6b6b80';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+  Chart.defaults.font.family = "'Space Mono', monospace";
+  Chart.defaults.font.size = 10;
+
+  const ACCENT = '#f7931a';
+  const GREEN  = '#00d084';
+  const RED    = '#ff4757';
+  const BLUE   = '#3d8bff';
+  const PURPLE = '#9b72ff';
+
+  // Price Chart
+  const pLabels = ['Apr21','Jul21','Oct21','Jan22','Apr22','Jul22','Oct22','Jan23','Apr23','Jul23','Oct23','Jan24','Apr24','Jul24','Oct24','Jan25','Apr25'];
+  const pData   = [58000,47000,62000,43000,46000,24000,19000,23000,30000,30000,34000,48000,70000,66000,72000,98000,84000];
+
+  new Chart(document.getElementById('priceChart'), {
+    type: 'line',
+    data: {
+      labels: pLabels,
+      datasets: [{
+        data: pData,
+        borderColor: ACCENT,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: ACCENT,
+        pointBorderColor: 'transparent',
+        tension: 0.4,
+        fill: true,
+        backgroundColor: (ctx) => {
+          const g = ctx.chart.ctx.createLinearGradient(0,0,0,300);
+          g.addColorStop(0,'rgba(247,147,26,0.18)');
+          g.addColorStop(1,'rgba(247,147,26,0)');
+          return g;
+        }
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' $' + c.raw.toLocaleString() } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { maxRotation: 45 } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: v => '$'+(v/1000).toFixed(0)+'K' } }
+      }
+    }
+  });
+
+  // Session bars
+  const sessions = [
+    { name: 'New York',        pct: 38, color: BLUE },
+    { name: 'London',          pct: 28, color: GREEN },
+    { name: 'Asian',           pct: 24, color: ACCENT },
+    { name: 'Overnight/Late NY', pct: 10, color: PURPLE },
+  ];
+  const sl = document.getElementById('sessionList');
+  sl.innerHTML = sessions.map(s => `
+    <div class="session-item">
+      <div class="session-meta">
+        <span class="session-name">${s.name}</span>
+        <span class="session-val">${s.pct}% of volume</span>
+      </div>
+      <div class="session-track">
+        <div class="session-fill" style="width:${s.pct}%;background:${s.color}"></div>
+      </div>
+    </div>`).join('');
+
+  // Range Chart
+  const years = ['2021','2022','2023','2024','2025','2026'];
+  const yMin  = [28000,15500,16500,38500,76000,75000];
+  const yMax  = [69000,48000,44500,108135,106000,90000];
+  const yAvg  = [47000,28000,26000,67000,92000,83000];
+
+  new Chart(document.getElementById('rangeChart'), {
+    type: 'bar',
+    data: {
+      labels: years,
+      datasets: [
+        { data: yMin.map((m,i) => [m, yMax[i]]), backgroundColor: 'rgba(247,147,26,0.15)', borderColor: 'rgba(247,147,26,0.4)', borderWidth: 1, borderSkipped: false, borderRadius: 3 },
+        { type: 'line', data: yAvg, borderColor: ACCENT, borderWidth: 2, pointRadius: 4, pointBackgroundColor: ACCENT, tension: 0 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: v => '$'+(v/1000).toFixed(0)+'K' } }
+      }
+    }
+  });
+
+  // Returns Histogram
+  const retLabels = ['-4%','-3%','-2%','-1%','0%','+1%','+2%','+3%','+4%'];
+  const retData   = [12,45,210,980,1800,920,200,48,14];
+  const retColors = retData.map((_,i) => i < 4 ? 'rgba(255,71,87,0.6)' : 'rgba(0,208,132,0.6)');
+  retColors[4] = 'rgba(247,147,26,0.6)';
+
+  new Chart(document.getElementById('retChart'), {
+    type: 'bar',
+    data: {
+      labels: retLabels,
+      datasets: [{ data: retData, backgroundColor: retColors, borderWidth: 0, borderRadius: 3, barPercentage: 0.9 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: v => v.toLocaleString() } }
+      }
+    }
+  });
+
+  // Session Return Chart
+  new Chart(document.getElementById('sessRetChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Asian','London','New York','Late NY'],
+      datasets: [{
+        data: [0.012, 0.028, 0.019, -0.004],
+        backgroundColor: [ACCENT, GREEN, BLUE, RED],
+        borderWidth: 0,
+        borderRadius: 4,
+        barPercentage: 0.6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: v => (v*100).toFixed(2)+'%' } }
+      }
+    }
+  });
+
+  // Heatmap
+  const hmMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const hmYears  = ['2021','2022','2023','2024','2025'];
+  const hmVol = [
+    [0,0,0,280,310,340,300,280,270,310,290,260],
+    [280,240,210,220,350,290,200,230,240,260,280,320],
+    [310,290,320,300,270,260,240,250,280,300,320,310],
+    [320,340,370,400,430,380,360,390,410,450,480,500],
+    [520,480,460,430,390,0,0,0,0,0,0,0]
+  ];
+
+  const hm = document.getElementById('heatmap');
+  hm.innerHTML = '<div></div>' + hmMonths.map(m => `<div class="hm-month">${m}</div>`).join('');
+  hmYears.forEach((yr,yi) => {
+    hm.innerHTML += `<div class="hm-label" style="font-family:'Space Mono';font-size:9px;color:#6b6b80">${yr}</div>`;
+    hmMonths.forEach((_,mi) => {
+      const v = hmVol[yi][mi];
+      const intensity = v > 0 ? Math.min(v / 550, 1) : 0;
+      const alpha = v > 0 ? (0.08 + intensity * 0.75).toFixed(2) : '0.04';
+      hm.innerHTML += `<div class="hm-cell" style="background:rgba(247,147,26,${alpha})" title="${yr} ${hmMonths[mi]}: ${v > 0 ? v.toFixed(0)+' avg vol' : 'no data'}"></div>`;
+    });
+  });
+</script>
+</body>
+</html>

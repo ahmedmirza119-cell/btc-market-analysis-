@@ -1,0 +1,22 @@
+# BTC Market Analysis — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# Data Fetching
+ccxt==4.5.40
+
+# Data Handling
+pandas==3.0.0
+numpy>=1.26.0
+
+# Database
+sqlalchemy==2.0.48
+pymysql==1.1.2
+
+# Visualization
+matplotlib>=3.8.0
+seaborn>=0.13.0
+mplfinance>=0.12.10b0
+
+# Jupyter (optional, for running notebooks)
+jupyter>=1.0.0
+ipykernel>=6.0.0
